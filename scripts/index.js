@@ -2,23 +2,26 @@ window.addEventListener('load', onLoad);
 
 let designerData = [];
 let APIHost = 'http://localhost:5125';
+let rectName = 'rectangle';
+let circleName = 'circle';
+
 
 
 async function drop(event) {
     event.preventDefault();
-    var currentItem = event.dataTransfer.getData('text');
+    var currentItem = event.dataTransfer.getData('id');
+    var dataId = event.dataTransfer.getData('data-id');
     var item = document.getElementById(currentItem);
 
     // Prevent existing item drag drop issue.
     var target = event.target.querySelectorAll('#' + currentItem);
-    if (target.length > 0) {
-        item.style.backgroundColor = 'black';
-        return;
-    }
+    target.forEach(function (element) {
+        if (element.getAttribute('data-id') === dataId) {
+            return;
+        }
+    });
 
     await updateDesign(item, event);
-
-    item.style.backgroundColor = 'black';
     target = event.target;
     target.appendChild(item);
 }
@@ -28,37 +31,44 @@ function dragover(event) {
 }
 
 function onDrag(event) {
-    event.dataTransfer.setData('text', event.target.id);
-    event.target.style.backgroundColor = 'yellow';
+    event.dataTransfer.setData('id', event.target.id);
+    event.dataTransfer.setData('data-id', event.target.getAttribute('data-id'));
 }
 
-function getRectComponent(id, text, className) {
+function getWidgetContainer() {
+    var element = document.createElement('div');
+    element.id = 'widget-wrapper';
+    element.className = 'widget-wrapper';
+    return element;
+}
+
+function getRectComponent(id, text, className, dataName) {
     var element = document.createElement('div');
     element.id = id;
     element.innerHTML = text;
     element.className = className;
     element.draggable = true;
-    element.setAttribute('data-name', 'rectangle');
+    element.setAttribute('data-id', dataName);
     element.ondragstart = onDrag;
     return element;
 }
 
-function getCircleComponent(id, text, className) {
+function getCircleComponent(id, text, className, dataName) {
     var element = document.createElement('div');
     element.id = id;
     element.innerHTML = text;
     element.className = className;
     element.draggable = true;
-    element.setAttribute('data-name', 'circle');
+    element.setAttribute('data-id', dataName);
     element.ondragstart = onDrag;
     return element;
 }
 
 async function onLoad() {
     // Create default widget panel items:
-    var widgetContainer = document.getElementById('widget-container');
-    var rect = getRectComponent(uuidv4(), 'Rectangle', 'widget');
-    var circle = getCircleComponent(uuidv4(), 'Circle', 'widget');
+    var widgetContainer = document.getElementsByClassName('widget-container')[0];
+    var rect = getRectComponent(rectName, rectName, 'widget', uuidv4());
+    var circle = getCircleComponent(circleName, circleName, 'widget', uuidv4());
     widgetContainer.appendChild(rect);
     widgetContainer.appendChild(circle);
 
@@ -80,12 +90,7 @@ document.querySelectorAll('.widget').forEach(function (item) {
     item.ondragstart = onDrag;
 });
 
-document.querySelectorAll('.left').forEach(function (item) {
-    item.ondragover = dragover;
-    item.ondrop = drop;
-});
-
-document.querySelectorAll('.right').forEach(function (item) {
+document.querySelectorAll('.canvas').forEach(function (item) {
     item.ondragover = dragover;
     item.ondrop = drop;
 });
@@ -95,33 +100,30 @@ function isNullOrUndefinedOrEmpty(value) {
 }
 
 function renderWidget(data) {
-    var leftContainer = document.getElementById('left');
-    var rightContainer = document.getElementById('right');
+    var designCanvas = document.getElementById('design-canvas');
 
-    data.forEach(function (item, index) {
+    data.forEach(function (item) {
         let currentWidget = '';
         if (item.item === 'rectangle') {
-            currentWidget = getRectComponent(item.id, item.name, 'widget' + index);
+            currentWidget = getRectComponent(item.name, item.name, 'widget', item.uniqueId);
         } else if (item.item === 'circle') {
-            currentWidget = getCircleComponent(item.id, item.name, 'widget' + index);
+            currentWidget = getCircleComponent(item.name, item.name, 'widget', item.uniqueId);
         }
-        if (item.position === 'right') {
-            rightContainer.appendChild(currentWidget);
-        } else {
-            leftContainer.appendChild(currentWidget);
+        if (currentWidget !== '') {
+            designCanvas.appendChild(currentWidget);
         }
     });
 }
 
 // Serialize the component position data
 async function updateDesign(item, event) {
-    var widgetName = item.getAttribute('data-name');
-    var widgetId = item.id;
+    var widgetUniqId = item.getAttribute('data-id');
+    var widgetName = item.id;
     var widgetText = item.innerHTML;
-    var widgetPosition = event.target.className;
+    var widgetPosition = "";
     var widgetData = {
         item: widgetName,
-        id: widgetId,
+        uniqueId: widgetUniqId,
         name: widgetText,
         position: widgetPosition
     };
@@ -161,7 +163,7 @@ function uuidv4() {
 function checkAndUpdateDataForPost(widgetData, designerData) {
     var isExist = false;
     designerData.forEach(function (item) {
-        if (item.id === widgetData.id) {
+        if (item.uniqueId === widgetData.uniqueId) {
             item.position = widgetData.position;
             isExist = true;
         }
