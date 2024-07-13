@@ -5,13 +5,19 @@ let APIHost = 'http://localhost:5125';
 let rectName = 'rectangle';
 let circleName = 'circle';
 
-
+let offsetX, offsetY;
+let positionX, positionY;
 
 async function drop(event) {
+    debugger;
     event.preventDefault();
     var currentItem = event.dataTransfer.getData('id');
     var dataId = event.dataTransfer.getData('data-id');
     var item = document.getElementById(currentItem);
+
+    const x = event.clientX - offsetX;
+    const y = event.clientY - offsetY;
+
 
     // Prevent existing item drag drop issue.
     var target = event.target.querySelectorAll('#' + currentItem);
@@ -21,8 +27,12 @@ async function drop(event) {
         }
     });
 
-    await updateDesign(item, event);
     target = event.target;
+    positionX =  x - target.getBoundingClientRect().left + 'px';
+    positionY =  y - target.getBoundingClientRect().top + 'px';
+    item.style.left = positionX;
+    item.style.top = positionY;
+    await updateDesign(item, event);
     target.appendChild(item);
 }
 
@@ -31,6 +41,9 @@ function dragover(event) {
 }
 
 function onDrag(event) {
+    var rect = this.getBoundingClientRect();
+    offsetX = event.clientX - rect.left;
+    offsetY = event.clientY - rect.top;
     event.dataTransfer.setData('id', event.target.id);
     event.dataTransfer.setData('data-id', event.target.getAttribute('data-id'));
 }
@@ -110,6 +123,9 @@ function renderWidget(data) {
             currentWidget = getCircleComponent(item.name, item.name, 'widget', item.uniqueId);
         }
         if (currentWidget !== '') {
+            debugger;
+            currentWidget.style.left = item.position.x;
+            currentWidget.style.top = item.position.y;
             designCanvas.appendChild(currentWidget);
         }
     });
@@ -120,7 +136,11 @@ async function updateDesign(item, event) {
     var widgetUniqId = item.getAttribute('data-id');
     var widgetName = item.id;
     var widgetText = item.innerHTML;
-    var widgetPosition = "";
+    var widgetPosition = {
+        x: positionX,
+        y: positionY
+    };
+
     var widgetData = {
         item: widgetName,
         uniqueId: widgetUniqId,
